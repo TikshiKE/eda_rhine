@@ -13,7 +13,7 @@ runoff_stations[, altitude := round(altitude, 0)]
 
 runoff_stations_firstG <- runoff_stations[,.(sname, area, altitude)]
 
-runoff_stations_firstG$size <- runoff_stations_firstG[,.(area/altitude)]
+runoff_stations_firstG$size <- runoff_stations_firstG[,.((area/altitude)*10/2)]
 
 ggplot(data = runoff_stations_firstG, 
        aes(x = area, y = altitude, color = size)) +
