@@ -5,6 +5,7 @@ library(ggplot2)
 
 runoff_year_key <- readRDS('data/runoff_year_key.rds')
 runoff_month_key <- readRDS('data/runoff_month_key.rds')
+runoff_day <- readRDS('data/runoff_day.rds')
 
 colset_4 <-  c("#D35C37", "#BF9A77", "#D6C6B9", "#97B8C2")
 
@@ -30,5 +31,11 @@ ggplot(to_plot, aes(season, value, fill = period)) +
 
 ###We can se that for stations BARS and KOEL annual runoff has increased after 2000, but decreased for the station DOMA.
 
+##Nav's q2
 
+quantiles <- runoff_day[,.(quantile(value, c(0.1)),quantile(value, c(0.9))), by = sname]
+
+runoff_day_new <- merge(runoff_day, quantiles, by = 'sname')
+runoff_days_rating <- data.table(above_high = runoff_day_new[value >= V2,.N], below_low = runoff_day_new[value < V1, .N])
+runoff_days_rating
 
