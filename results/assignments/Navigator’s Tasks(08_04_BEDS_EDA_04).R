@@ -3,7 +3,6 @@
 #preparing enviroment
 library(data.table)
 library(ggplot2)
-library(dplyr)
 
 names <-  c("MEAN", "MEDIAN", "MIN", "MAX")
 
@@ -31,6 +30,16 @@ runoff_stats$skewness <- round((runoff_stats$mean_day - runoff_stats$median)/run
 runoff_stats$coef_of_var <- round((runoff_stats$sd_day/runoff_stats$mean_day), d = 3)
 
 new_dt_skew_and_Vcoef <- runoff_stats[,c(1,7,8)]
+
+##plot each boxplot (facet) of monthly runoff with different fill colour according to the runoff class
+
+to_merge <- runoff_summary[,.(sname,runoff_class)]
+
+runoff_month_new <- merge(runoff_month, to_merge, by = 'sname')
+ggplot(runoff_month_new, aes(x = factor(month), y = value, fill = runoff_class)) +
+  facet_wrap(~sname, scales = 'free') +
+  geom_boxplot()
+
 
 ##daily runoff by stations(q4)
 
