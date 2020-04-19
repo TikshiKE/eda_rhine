@@ -1,0 +1,127 @@
+---
+title: "EDA Rhine report"
+author: "E. Kren"
+date: "04/2020"
+output: 
+  html_document:
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_knit$set(root.dir = 'C:/Users/Matilda/Documents/Exploratory Data Analysis')
+
+```
+
+## Introduction
+
+This report was made in relation to EDA (Exploratory Data Analysis) checking the hydro-climatic changes predicted by Middelkoop et al. happening all over the Rhine basin. 
+
+The main assumption of the Middelkoop team was: 
+
+> “Higher winter river discharge as a result of intensified snow-melt and increased winter precipitation, and lower summer discharge due to the reduced winter snow storage and an increase of evapotranspiration”
+
+The main study motivation of Middelkoop and his colleagues is the consequences of hydroclimatic change to:
+
+* winter sports in Alps 
+* flood defense 
+* inland navigation 
+* hydropower generation 
+* water availability for industry, agriculture and domestic use 
+* floodplain development.
+
+***
+
+## What did we do for the study?
+
+The main task was to repeat the work of the Middelkoop team. We had raw data from stations across the entire basin of the Rhine river. Bringing them into a cleaner form was the first step in the research. As a result, we had data in the form of time series and tidy files.
+
+By looking at the results we fixed the problems with missing data and were also able to look at the comparison of the periods of available data for each station.
+
+```{r periods of avail. data}
+library(ggplot2)
+library(data.table)
+runoff_stations <- readRDS('./data/runoff_stations.rds')
+to_plot <- runoff_stations[, .(sname, start, end)]
+to_plot <- melt(to_plot, id.vars = 'sname')
+ggplot(data = to_plot, aes(x = value, y = sname)) +
+  geom_line(lwd = 2, col = 'dark red') +
+  theme_bw()
+```
+
+However, realizing that the usual plotting is not always an accurate description of what is happening in our data, we decided to create summary statistics. In addition to highlighting important data for each station, we have divided stations by category in terms of area, altitude, runoff and station placement by river movement.
+
+```{r summary}
+runoff_summary <- readRDS('data/runoff_summary.rds')
+knitr::kable(runoff_summary[, .(sname, station, country, area, altitude, start, end, area_class, alt_class, runoff_class, category)], caption = "Whole summary stats", digits = 2)
+
+```
+
+The division into seasonal periods allowed us to display the final data more correctly. We can observe more accurate general graphs of winter and summer runoff.
+
+```{r summer and winter runoff}
+
+runoff_month <- readRDS('data/runoff_month.rds')
+runoff_summer <- readRDS('data/runoff_summer.rds')
+runoff_winter <- readRDS('data/runoff_winter.rds')
+
+colset_4 <-  c("#D35C37", "#BF9A77", "#D6C6B9", "#97B8C2")
+
+runoff_winter[, value_norm := scale(value), sname]
+runoff_summer[, value_norm := scale(value), sname]
+n_stations <- nrow(runoff_summary)
+
+ggplot(runoff_winter[year > 1950], aes(x = year, y = value_norm, col = sname)) +
+  geom_smooth(method = 'loess', formula = y~x, se = 0) + 
+  scale_color_manual(values = colorRampPalette(colset_4)(n_stations)) +
+  ggtitle('Winter runoff') +
+  xlab(label = "Year") +
+  ylab(label = "Runoff (m3/s)") +
+  theme_bw()
+
+ggplot(runoff_summer[year > 1950], aes(x = year, y = value_norm, col = sname)) +
+  geom_smooth(method = 'loess', formula = y~x, se = 0) + 
+  scale_color_manual(values = colorRampPalette(colset_4)(n_stations)) +
+    ggtitle('Summer runoff') +
+  xlab(label = "Year") +
+  ylab(label = "Runoff (m3/s)") +
+  theme_bw()
+```
+
+As well as comparing the winter and summer runoff directly for each of the stations.
+
+```{r runoff by stations}
+
+year_thres <- 1980
+to_plot <- rbind(cbind(runoff_winter, season = factor('winter')), 
+                 cbind(runoff_summer, season = factor('summer'))) 
+
+to_plot[year < year_thres, period := factor('1950-1980')]
+to_plot[year >= year_thres, period := factor('1981-2016')]
+to_plot[year < year_thres, period := factor('1950-1980')]
+to_plot[year >= year_thres, period := factor('1981-2016')]
+
+to_plot <- to_plot[year >= 1950]
+
+ggplot(to_plot, aes(season, value, fill = period)) +
+  geom_boxplot() +
+  facet_wrap(~sname, scales = 'free_y') +
+  scale_fill_manual(values = colset_4[c(4, 1)]) +
+  xlab(label = "Season") +
+  ylab(label = "Runoff (m3/s)") +
+  theme_bw()
+
+```
+
+According to the graphs, the picture we can observe positively matches the assumptions made by the Middelkoop team.
+
+***
+
+## Note the deviation
+
+However, as we were clearing and classifying our data, we noticed a deviation. The DOMA station behaved very strangely and after a deeper study, we concluded that this station is not a representative station.
+
+A study by Pfeiffer and Ionita, 2017 states the following about this problem:
+
+> “We have shown that Rhine River is only moderately altered since the middle of the 20th century, except for Ems hydrological station, which is significantly affected. The Ems station is located in Domat/Ems, Switzerland, where a run-of-the-river power station is operated. The Reichenau power plant was built between 1959 and 1962 in the Alpenrhein. It is located at Domat/Ems only a few kilometers below the confluence of Vorderrhein and Hinterrhein near Reichenau. The Rhine River is dammed up above Domat/Ems and the water is led into a channel about 1 km long, which partly runs underground. At the end of this canal lies the power plant, after which the water flows back into the natural riverbed. As shown above, drastic changes in the hydrologic regime at Ems are observed after about 1960, coinciding with the time when the Reichenau power plant was built.”	
